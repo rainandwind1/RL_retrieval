@@ -17,9 +17,9 @@ class QMIXAgent_net(nn.Module):
 
     def forward(self, inputs, hidden_s, max_step = 1):
         fc1_op = self.fc1(inputs)
-        fc1_op.view(max_step, -1, 64)
+        fc1_op = fc1_op.view(-1, max_step, 64)
         gru_op, hidden_next = self.gru_net(fc1_op, hidden_s)
-        gru_op.view(-1, self.hidden_size)
+        gru_op = gru_op.view(-1, max_step, self.hidden_size)
         q_val = self.fc2(gru_op).view(-1, max_step, self.action_size)
         return q_val, hidden_next
 
@@ -46,11 +46,11 @@ class QMIXMixing_net(nn.Module):
         self.num_agent, self.joint_obs_size, self.obs_info, self.action_info, self.device, self.lr = args
         self.hidden_nums = [64, 1]
         # 超网络 用于生成混合加权各个代理的q值的权重
-        self.hyper_netw1 = nn.Linear(self.input_size, self.num_agent * self.hidden_nums[0])
-        self.hyper_netw2 = nn.Linear(self.input_size, self.hidden_nums[0] * self.hidden_nums[1])
-        self.hyper_netb1 = nn.Linear(self.input_size, self.hidden_nums[0])
-        self.hyper_netb2 = nn.Linear(self.input_size, self.hidden_nums[1])
-        self.agent_model = nn.ModuleList([QMIXAgent_net(args = (self.obs_info[i] + self.action_info[i], 32, self.action_info[i])) for i in range(self.num_agent)])
+        self.hyper_netw1 = nn.Linear(self.joint_obs_size, self.num_agent * self.hidden_nums[0])
+        self.hyper_netw2 = nn.Linear(self.joint_obs_size, self.hidden_nums[0] * self.hidden_nums[1])
+        self.hyper_netb1 = nn.Linear(self.joint_obs_size, self.hidden_nums[0])
+        self.hyper_netb2 = nn.Linear(self.joint_obs_size, self.hidden_nums[1])
+        self.agent_model = nn.ModuleList([QMIXAgent_net(args = (self.obs_info[i] + self.action_info[i], 32, self.action_info[i], self.device)) for i in range(self.num_agent)])
         self.optimizer = optim.Adam(self.parameters(), lr = self.lr)
 
     def forward(self, q_vals, inputs):

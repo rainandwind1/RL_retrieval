@@ -143,10 +143,12 @@ def trans_to_tensor(s_ls, a_ls, r_ls, s_next_ls, done_ls, obs_ls, obs_next_ls, a
 
 
 def valid_filter(q_vals, action_mask):
-    for n in range(q_vals.shape[0]):
-        for i in range(q_vals.shape[1]):
-            if action_mask[n ,i] == 0:
-                q_vals[n, i] = -99999
+    mask = torch.ones_like(torch.FloatTensor(action_mask).to(q_vals.device)) * -float("inf") * (1 - torch.FloatTensor(action_mask).to(q_vals.device))
+    q_vals = q_vals + mask
+    # for n in range(q_vals.shape[0]):
+    #     for i in range(q_vals.shape[1]):
+    #         if action_mask[n ,i] == 0:
+    #             q_vals[n, i] = -99999
     return q_vals
 
 

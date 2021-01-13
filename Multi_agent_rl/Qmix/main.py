@@ -40,7 +40,7 @@ def main():
         epsilon = 0.01
     else:
         LOAD_KEY, TRAIN_KEY = KEY[1]
-        LERNING_RATE = 9e-4
+        LERNING_RATE = 8e-4
         epsilon = 0.4
     
     train_flag = False
@@ -112,7 +112,7 @@ def main():
                 print("Saving model param ... ")
                 torch.save(model.state_dict(), PATH + "/Q_Mix_epoch_" + str(e+1) + '.pkl')
                 print("ok!")
-        print("Total reward in episode {} = {}, epsilon: {},  training:  {}".format(e, episode_reward, epsilon, train_flag))
+        print("Total reward in episode {} = {:.3}, epsilon: {:.3},  training:  {}".format(e, episode_reward, epsilon, train_flag))
 
 
     env.close()
