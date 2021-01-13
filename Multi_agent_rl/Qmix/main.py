@@ -32,7 +32,7 @@ def main():
     WEIGHT_COPY_INTERVAL = 5000
     DECAY_EP = 0.999
     PATH = './param'
-    DISPLAY = True
+    DISPLAY = False
     KEY = [[True, False], [False, True]]
     if DISPLAY:
         LOAD_KEY, TRAIN_KEY = KEY[0]
@@ -40,7 +40,8 @@ def main():
         epsilon = 0.01
     else:
         LOAD_KEY, TRAIN_KEY = KEY[1]
-        epsilon = 0.3
+        LERNING_RATE = 9e-4
+        epsilon = 0.4
     
     train_flag = False
     total_step = 0

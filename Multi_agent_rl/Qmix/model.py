@@ -172,7 +172,7 @@ def train(replay_buffer, model, target_model, gamma, lr, batch_size):
             partical_next_inputs = torch.cat([obs_next_ls[:,i,:], a_vec[:,i,:]], -1)
             q_target, _ = target_model.agent_model[0](partical_next_inputs,  hidden_state)
             q_target = valid_filter(q_target, action_mask_ls[:,i,:])   # action mask 过滤下一个动作
-            q_target = r_ls + gamma * (torch.max(q_target, -1)[0]).unsqueeze(-1) * done_ls
+            q_target = r_ls + gamma * (torch.max(q_target, -1)[0]).unsqueeze(-1) * (1 - done_ls)
             q_target_ls.append(q_target)
         qval_ls = torch.cat(qval_ls, -1)
         q_target_ls = torch.cat(q_target_ls, -1)
@@ -220,6 +220,10 @@ def train(replay_buffer, model, target_model, gamma, lr, batch_size):
 #         model.optimizer.step()
     
         
+
+# class Colla_Q(nn.Module):
+#     def __init__(self, args):
+#         super(Colla_Q, self).__init__()
 
 
 
