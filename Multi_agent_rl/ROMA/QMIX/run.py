@@ -65,7 +65,7 @@ def main():
             # 每个代理分开执行
             for agent_id in range(n_agents):
                 action_mask = env.get_avail_agent_actions(agent_id)
-                action, h_next = model.agent_model[agent_id].get_action(torch.cat([torch.FloatTensor(obs[agent_id]).to(device), torch.FloatTensor(action_vec[agent_id]).to(device)]), hidden_state[agent_id], epsilon, action_mask)
+                action, h_next = model.agent_model[0].get_action(torch.cat([torch.FloatTensor(obs[agent_id]).to(device), torch.FloatTensor(action_vec[agent_id]).to(device)]), hidden_state[agent_id], epsilon, action_mask)
                 
                 # update 记忆变量
                 actions[agent_id] = action
@@ -78,9 +78,10 @@ def main():
             # env step
             reward, terminated, _ = env.step(actions)
             loss_mask = 1. if not terminated else 0.
+            done = 1. if terminated else 0.
             obs_next = env.get_obs()
             state_next = env.get_state()
-            episode_mem.append((state, actions, action_vec, reward, state_next, terminated, obs, obs_next, actions_pre, action_pre_onehot_joint, action_mask_joint, loss_mask))
+            episode_mem.append((state, actions, action_vec, reward, state_next, done, obs, obs_next, actions_pre, action_pre_onehot_joint, action_mask_joint, loss_mask))
             
             if terminated:
                 replay_buffer.save_trans(episode_mem)
@@ -92,14 +93,20 @@ def main():
             total_step += 1
 
             if TRAIN_KEY:
-                if replay_buffer.mem_len >  BATCH_SIZE:
-                    QMIXtrain(replay_buffer, model, target_model, GAMMA, LERNING_RATE, BATCH_SIZE)
-                    train_flag = True 
+                # 权重覆盖
+                if total_step % WEIGHT_COPY_INTERVAL == 0:
+                    print("Weight copy!")
+                    target_model.load_state_dict(model.state_dict())
 
-                if (ep_i+1) % 200 == 0:
-                    print("Saving model param ... ")
-                    torch.save(model.state_dict(), PATH + "/Q_Mix_epoch_" + str(ep_i+1) + '.pkl')
-                    print("ok!")
+        if TRAIN_KEY:
+            if replay_buffer.mem_len >  BATCH_SIZE:
+                QMIXtrain(replay_buffer, model, target_model, GAMMA, LERNING_RATE, BATCH_SIZE)
+                train_flag = True 
+
+            if (ep_i+1) % 200 == 0:
+                print("Saving model param ... ")
+                torch.save(model.state_dict(), PATH + "/Q_Mix_epoch_" + str(ep_i+1) + '.pkl')
+                print("ok!")
         print("Total reward in episode {} = {:.3}, epsilon: {:.3},  training:  {}".format(ep_i, episode_reward, epsilon, train_flag))
 
 

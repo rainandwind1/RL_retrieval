@@ -13,13 +13,13 @@ def QMIXtrain(replay_buffer, model, target_model, gamma, lr = 1e-3, batch_size =
     q_target_ls = []
     for i in range(model.num_agent):
         agent_inputs = torch.cat([obs_ep[:, :, i, :], a_pre_onehot_ep[:, :, i, :]], -1) # batch_size, seq_len, n_agent, obs_size // batch_size, seq_len, n_agent, action_size
-        q_idx, _ = model.agent_model[i](agent_inputs, hidden_s, max_step = max_steps)
+        q_idx, _ = model.agent_model[0](agent_inputs, hidden_s, max_step = max_steps)
         q_val = torch.gather(q_idx, -1, a_ep[:, :, i].unsqueeze(-1))
         q_val_ls.append(q_val)
         
         agent_next_inputs = torch.cat([obs_next_ep[:, :, i, :], a_onehot_ep[:, :, i, :]], -1)
-        q_target, _ = target_model.agent_model[i](agent_next_inputs, hidden_s, max_step = max_steps)
-        q_target = valid_filter(q_target, action_mask_ep[:, :, i, :])
+        q_target, _ = target_model.agent_model[0](agent_next_inputs, hidden_s, max_step = max_steps)
+        q_target[action_mask_ep[:, :, i, :] == 0] = -9999999
         q_target = r_ep + gamma * (torch.max(q_target, -1)[0]).unsqueeze(-1) * (1 - done_ep)
         q_target_ls.append(q_target)
     qval_ls = torch.cat(q_val_ls, -1)

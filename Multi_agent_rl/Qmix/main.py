@@ -26,7 +26,7 @@ def main():
     # Hyperparameters
     LERNING_RATE = 8e-4
     GAMMA = 0.98
-    N_EPISODES = 10000
+    N_EPISODES = 10000000
     TRAIN_BEGIN = 10000
     BATCH_SIZE = 32
     WEIGHT_COPY_INTERVAL = 5000
@@ -40,8 +40,8 @@ def main():
         epsilon = 0.01
     else:
         LOAD_KEY, TRAIN_KEY = KEY[1]
-        LERNING_RATE = 8e-4
-        epsilon = 0.4
+        LERNING_RATE = 5e-4
+        epsilon = 0.9
     
     train_flag = False
     total_step = 0
@@ -86,7 +86,8 @@ def main():
             reward, terminated, _ = env.step(actions)
             obs_next = env.get_obs()
             state_next = env.get_state()
-            episode_mem.append((state, actions, reward, state_next, terminated, obs, obs_next, action_pre, action_mask_ep))
+            done = 1. if terminated else 0.
+            episode_mem.append((state, actions, reward, state_next, done, obs, obs_next, action_pre, action_mask_ep))
             if terminated:
                 replay_buffer.save_trans(episode_mem)
             

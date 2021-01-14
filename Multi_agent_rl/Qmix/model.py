@@ -113,10 +113,10 @@ class Mixing_net(nn.Module):  # s 为输入生成正权值
         self.optimizer = optim.Adam(self.parameters(), lr = self.lr)
 
     def forward(self, q_vals, inputs):
-        weights1 = torch.abs(self.hyper_net1(torch.cuda.FloatTensor(inputs)).view(-1, self.num_agent_net, self.hidden_nums[0]))
-        weights2 = torch.abs(self.hyper_net2(torch.cuda.FloatTensor(inputs)).view(-1, self.hidden_nums[0], self.hidden_nums[1]))
-        b1 = self.hyper_net_b1(torch.cuda.FloatTensor(inputs)).view(-1, 1, self.hidden_nums[0])
-        b2 = self.hyper_net_b2(torch.cuda.FloatTensor(inputs)).view(-1, 1, self.hidden_nums[1])
+        weights1 = torch.abs(self.hyper_net1(inputs).view(-1, self.num_agent_net, self.hidden_nums[0]))
+        weights2 = torch.abs(self.hyper_net2(inputs).view(-1, self.hidden_nums[0], self.hidden_nums[1]))
+        b1 = self.hyper_net_b1(inputs).view(-1, 1, self.hidden_nums[0])
+        b2 = self.hyper_net_b2(inputs).view(-1, 1, self.hidden_nums[1])
         q_vals = q_vals.view(-1, 1, self.num_agent_net)
         q_tot = torch.bmm(torch.bmm(q_vals, weights1) + b1, weights2) + b2
         return q_tot
@@ -142,14 +142,9 @@ def trans_to_tensor(s_ls, a_ls, r_ls, s_next_ls, done_ls, obs_ls, obs_next_ls, a
 
 
 
-def valid_filter(q_vals, action_mask):
-    mask = torch.ones_like(torch.FloatTensor(action_mask).to(q_vals.device)) * -float("inf") * (1 - torch.FloatTensor(action_mask).to(q_vals.device))
-    q_vals = q_vals + mask
-    # for n in range(q_vals.shape[0]):
-    #     for i in range(q_vals.shape[1]):
-    #         if action_mask[n ,i] == 0:
-    #             q_vals[n, i] = -99999
-    return q_vals
+# def valid_filter(q_vals, action_mask):
+#     q_vals = q_vals + mask
+#     return q_vals
 
 
 
@@ -160,20 +155,21 @@ def train(replay_buffer, model, target_model, gamma, lr, batch_size):
     for s_ls, a_ls, r_ls, s_next_ls, done_ls, obs_ls, obs_next_ls, a_pre_ls, action_mask_ls in zip(s_ep, a_ep, r_ep, s_next_ep, done_ep, obs_ep, obs_next_ep, a_pre_ep, action_mask_ep):
         # print("episode training!  flag test:....")
         # calculate q_val && q_target
-        s_ls, a_ls, r_ls, s_next_ls, done_ls, obs_ls, obs_next_ls, a_pre_ls, action_mask_ls = trans_to_tensor(s_ls, a_ls, r_ls, s_next_ls, done_ls, obs_ls, obs_next_ls, a_pre_ls, action_mask_ls, model.device)
         a_vec = trans_aidx(a_ls, model.opi_size_ls[0], model.device)
         a_pre_vec = trans_aidx(a_pre_ls, model.opi_size_ls[0], model.device)
+        s_ls, a_ls, r_ls, s_next_ls, done_ls, obs_ls, obs_next_ls, a_pre_ls, action_mask_ls = trans_to_tensor(s_ls, a_ls, r_ls, s_next_ls, done_ls, obs_ls, obs_next_ls, a_pre_ls, action_mask_ls, model.device)
         hidden_state = torch.zeros(1, 1, 32).to(model.device)
         qval_ls = []
         q_target_ls = []
         for i in range(model.num_agent_net):
             partical_inputs = torch.cat([obs_ls[:,i,:], a_pre_vec[:,i,:]], -1)
             q_idx, _ = model.agent_model[0](partical_inputs, hidden_state)
-            q_val = torch.gather(q_idx, 1, torch.cuda.LongTensor(a_ls[:,i].unsqueeze(-1)))
+            q_val = torch.gather(q_idx, 1, a_ls[:,i].unsqueeze(-1))
             qval_ls.append(q_val)
             partical_next_inputs = torch.cat([obs_next_ls[:,i,:], a_vec[:,i,:]], -1)
             q_target, _ = target_model.agent_model[0](partical_next_inputs,  hidden_state)
-            q_target = valid_filter(q_target, action_mask_ls[:,i,:])   # action mask 过滤下一个动作
+            q_target[torch.FloatTensor(action_mask_ls[:,i,:]).to(model.device) == 0] = -9999999
+            # q_target = valid_filter(q_target, action_mask_ls[:,i,:])   # action mask 过滤下一个动作
             q_target = r_ls + gamma * (torch.max(q_target, -1)[0]).unsqueeze(-1) * (1 - done_ls)
             q_target_ls.append(q_target)
         qval_ls = torch.cat(qval_ls, -1)

@@ -34,6 +34,7 @@ def main():
                 actions.append(action)
 
             reward, terminated, _ = env.step(actions)
+            print(terminated)
             episode_reward += reward
 
         print("Total reward in episode {} = {}".format(e, episode_reward))
