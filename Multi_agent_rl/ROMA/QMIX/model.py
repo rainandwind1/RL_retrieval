@@ -50,7 +50,7 @@ class QMIXMixing_net(nn.Module):
         self.hyper_netw2 = nn.Linear(self.joint_obs_size, self.hidden_nums[0] * self.hidden_nums[1])
         self.hyper_netb1 = nn.Linear(self.joint_obs_size, self.hidden_nums[0])
         self.hyper_netb2 = nn.Linear(self.joint_obs_size, self.hidden_nums[1])
-        self.agent_model = nn.ModuleList([QMIXAgent_net(args = (self.obs_info[i] + self.action_info[i], 32, self.action_info[i], self.device)) for i in range(self.num_agent)])
+        self.agent_model = nn.ModuleList([QMIXAgent_net(args = (self.obs_info[i] + self.action_info[i] + self.num_agent, 32, self.action_info[i], self.device)) for i in range(self.num_agent)])
         self.optimizer = optim.Adam(self.parameters(), lr = self.lr)
 
     def forward(self, q_vals, inputs):
@@ -79,11 +79,12 @@ class Replaybuffer():
     
     def sample_batch(self, batch_size = 64):
         episode_batch = random.sample(self.mem_list, batch_size)
-        s_ep, a_ep, a_onehot_ep, r_ep, s_next_ep, done_ep, obs_ep, obs_next_ep, a_pre_ep, a_pre_onehot_ep, action_mask_ep, loss_mask_ep = ([] for _ in range(12))
+        id_ep, s_ep, a_ep, a_onehot_ep, r_ep, s_next_ep, done_ep, obs_ep, obs_next_ep, a_pre_ep, a_pre_onehot_ep, action_mask_ep, loss_mask_ep = ([] for _ in range(13))
         for episode in episode_batch:
-            s_ls, a_ls, a_onehot_ls, r_ls, s_next_ls, done_ls, obs_ls, obs_next_ls, a_pre_ls, a_pre_onehot_ls, action_mask_ls, loss_mask_ls = ([] for _ in range(12))
+            id_ls, s_ls, a_ls, a_onehot_ls, r_ls, s_next_ls, done_ls, obs_ls, obs_next_ls, a_pre_ls, a_pre_onehot_ls, action_mask_ls, loss_mask_ls = ([] for _ in range(13))
             for trans in episode:
-                s, a, a_onehot, r, s_next, done, obs, obs_next, a_pre, a_pre_onehot, action_mask, loss_mask = trans
+                id_, s, a, a_onehot, r, s_next, done, obs, obs_next, a_pre, a_pre_onehot, action_mask, loss_mask = trans
+                id_ls.append(id_)
                 s_ls.append(s)
                 a_ls.append(a)
                 a_onehot_ls.append(a_onehot)
@@ -96,6 +97,7 @@ class Replaybuffer():
                 a_pre_onehot_ls.append(a_pre_onehot)
                 action_mask_ls.append(action_mask)
                 loss_mask_ls.append([loss_mask])
+            id_ep.append(id_ls)
             s_ep.append(s_ls)
             a_ep.append(a_ls)
             a_onehot_ep.append(a_onehot_ls)
@@ -109,6 +111,6 @@ class Replaybuffer():
             action_mask_ep.append(action_mask_ls)
             loss_mask_ep.append(loss_mask_ls)
 
-        return s_ep, a_ep, a_onehot_ep, r_ep, s_next_ep, done_ep, obs_ep, obs_next_ep, a_pre_ep, a_pre_onehot_ep, action_mask_ep, loss_mask_ep
+        return id_ep, s_ep, a_ep, a_onehot_ep, r_ep, s_next_ep, done_ep, obs_ep, obs_next_ep, a_pre_ep, a_pre_onehot_ep, action_mask_ep, loss_mask_ep
 
 

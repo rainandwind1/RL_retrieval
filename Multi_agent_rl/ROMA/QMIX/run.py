@@ -55,6 +55,7 @@ def main():
         hidden_state = [torch.zeros(1, 1, 32).to(device) for _ in range(n_agents)]
         action_vec = [np.zeros(n_actions) for _ in range(n_agents)]
         actions = [0 for _ in range(n_agents)]
+        id_vec = [np.zeros(n_agents) for _ in range(n_agents)]
 
         while not terminated:
             actions_pre = copy.deepcopy(actions)
@@ -64,8 +65,9 @@ def main():
             
             # 每个代理分开执行
             for agent_id in range(n_agents):
+                id_vec[agent_id][agent_id] = 1.
                 action_mask = env.get_avail_agent_actions(agent_id)
-                action, h_next = model.agent_model[0].get_action(torch.cat([torch.FloatTensor(obs[agent_id]).to(device), torch.FloatTensor(action_vec[agent_id]).to(device)]), hidden_state[agent_id], epsilon, action_mask)
+                action, h_next = model.agent_model[0].get_action(torch.cat([torch.FloatTensor(obs[agent_id]).to(device), torch.FloatTensor(action_vec[agent_id]).to(device), torch.FloatTensor(id_vec[agent_id]).to(device)]), hidden_state[agent_id], epsilon, action_mask)
                 
                 # update 记忆变量
                 actions[agent_id] = action
@@ -74,6 +76,7 @@ def main():
                 action_vec[agent_id][action] = 1.
                 action_mask = env.get_avail_agent_actions(agent_id)
                 action_mask_joint.append(action_mask)
+                
            
             # env step
             reward, terminated, _ = env.step(actions)
@@ -81,7 +84,7 @@ def main():
             done = 1. if terminated else 0.
             obs_next = env.get_obs()
             state_next = env.get_state()
-            episode_mem.append((state, actions, action_vec, reward, state_next, done, obs, obs_next, actions_pre, action_pre_onehot_joint, action_mask_joint, loss_mask))
+            episode_mem.append((id_vec, state, actions, action_vec, reward, state_next, done, obs, obs_next, actions_pre, action_pre_onehot_joint, action_mask_joint, loss_mask))
             
             if terminated:
                 replay_buffer.save_trans(episode_mem)

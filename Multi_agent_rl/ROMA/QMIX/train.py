@@ -7,17 +7,17 @@ from model import *
 # 训练函数
 def QMIXtrain(replay_buffer, model, target_model, gamma, lr = 1e-3, batch_size = 64):
     episode_batch = replay_buffer.sample_batch(batch_size)
-    s_ep, a_ep, a_onehot_ep, r_ep, s_next_ep, done_ep, obs_ep, obs_next_ep, a_pre_ep, a_pre_onehot_ep, action_mask_ep, loss_mask_ep, max_steps = trans_to_tensor(episode_batch, model.device)
+    id_ep, s_ep, a_ep, a_onehot_ep, r_ep, s_next_ep, done_ep, obs_ep, obs_next_ep, a_pre_ep, a_pre_onehot_ep, action_mask_ep, loss_mask_ep, max_steps = trans_to_tensor(episode_batch, model.device)
     hidden_s = torch.zeros(1, batch_size, model.agent_model[0].hidden_size).to(model.device)
     q_val_ls = []
     q_target_ls = []
     for i in range(model.num_agent):
-        agent_inputs = torch.cat([obs_ep[:, :, i, :], a_pre_onehot_ep[:, :, i, :]], -1) # batch_size, seq_len, n_agent, obs_size // batch_size, seq_len, n_agent, action_size
+        agent_inputs = torch.cat([obs_ep[:, :, i, :], a_pre_onehot_ep[:, :, i, :], id_ep[:, :, i, :]], -1) # batch_size, seq_len, n_agent, obs_size // batch_size, seq_len, n_agent, action_size
         q_idx, _ = model.agent_model[0](agent_inputs, hidden_s, max_step = max_steps)
         q_val = torch.gather(q_idx, -1, a_ep[:, :, i].unsqueeze(-1))
         q_val_ls.append(q_val)
         
-        agent_next_inputs = torch.cat([obs_next_ep[:, :, i, :], a_onehot_ep[:, :, i, :]], -1)
+        agent_next_inputs = torch.cat([obs_next_ep[:, :, i, :], a_onehot_ep[:, :, i, :], id_ep[:, :, i, :]], -1)
         q_target, _ = target_model.agent_model[0](agent_next_inputs, hidden_s, max_step = max_steps)
         q_target[action_mask_ep[:, :, i, :] == 0] = -9999999
         q_target = r_ep + gamma * (torch.max(q_target, -1)[0]).unsqueeze(-1) * (1 - done_ep)

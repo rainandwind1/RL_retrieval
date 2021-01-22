@@ -3,11 +3,12 @@ from torch import nn, optim
 import torch.nn.functional as F
 
 def trans_to_tensor(episode_batch, device):
-    s_ep, a_ep, a_onehot_ep, r_ep, s_next_ep, done_ep, obs_ep, obs_next_ep, a_pre_ep, a_pre_onehot_ep, action_mask_ep, loss_mask_ep = episode_batch
+    id_ep, s_ep, a_ep, a_onehot_ep, r_ep, s_next_ep, done_ep, obs_ep, obs_next_ep, a_pre_ep, a_pre_onehot_ep, action_mask_ep, loss_mask_ep = episode_batch
     max_ep_len = 0
     for epi in s_ep:
         max_ep_len = max(max_ep_len, len(epi))
     for i in range(len(s_ep)):
+        id_ep[i] += [[[0.] * len(id_ep[0][0][0])] * len(id_ep[0][0])] * (max_ep_len - len(id_ep[i]))
         s_ep[i] += [[0.] * len(s_ep[0][0])] * (max_ep_len - len(s_ep[i]))
         a_ep[i] += [[0.] * len(a_ep[0][0])] * (max_ep_len - len(a_ep[i]))
         a_onehot_ep[i] += [[[0.] * len(a_onehot_ep[0][0][0])] * len(a_onehot_ep[0][0])] * (max_ep_len - len(a_onehot_ep[i]))
@@ -21,7 +22,8 @@ def trans_to_tensor(episode_batch, device):
         action_mask_ep[i] += [[[0.] * len(action_mask_ep[0][0][0])] * len(action_mask_ep[0][0])] * (max_ep_len - len(action_mask_ep[i]))
         loss_mask_ep[i] += [[0.]] * (max_ep_len - len(loss_mask_ep[i]))
 
-    return torch.FloatTensor(s_ep).to(device),\
+    return torch.FloatTensor(id_ep).to(device),\
+        torch.FloatTensor(s_ep).to(device),\
         torch.LongTensor(a_ep).to(device),\
         torch.FloatTensor(a_onehot_ep).to(device),\
         torch.FloatTensor(r_ep).to(device),\
